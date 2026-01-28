@@ -1,0 +1,14 @@
+# Jira Configuration
+# Kopiera denna fil till .env och fyll i dina uppgifter
+
+# Din Jira-instans URL (t.ex. https://ditt-foretag.atlassian.net)
+JIRA_URL=https://your-domain.atlassian.net
+
+# Din Jira-epost
+JIRA_EMAIL=your-email@example.com
+
+# API Token - Skapa på: https://id.atlassian.com/manage-profile/security/api-tokens
+JIRA_API_TOKEN=your-api-token-here
+
+# Projekt-nyckel (valfritt, för att filtrera tickets)
+JIRA_PROJECT_KEY=SOMU

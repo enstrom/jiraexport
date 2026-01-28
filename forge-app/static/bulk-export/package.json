@@ -1,0 +1,21 @@
+{
+  "name": "bulk-export",
+  "version": "1.0.0",
+  "source": "src/index.html",
+  "scripts": {
+    "build": "parcel build src/index.html --dist-dir build --public-url ./",
+    "dev": "parcel src/index.html"
+  },
+  "dependencies": {
+    "@forge/bridge": "^4.1.0",
+    "@forge/react": "^11.10.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "jspdf": "^2.5.1",
+    "html2canvas": "^1.4.1"
+  },
+  "devDependencies": {
+    "parcel": "^2.12.0",
+    "process": "^0.11.10"
+  }
+}

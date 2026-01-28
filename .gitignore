@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Node
+node_modules/
+.parcel-cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Exports
+exports/
+*.pdf
+
+# Forge
+forge-app/out/
+forge-app/static/*/build/
+forge-app/static/*/.parcel-cache/
+
+# Temp
+*.log
+*.tmp

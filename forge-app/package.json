@@ -1,0 +1,36 @@
+{
+  "name": "jira-pdf-exporter",
+  "version": "1.0.0",
+  "description": "Export Jira issues to professional PDF documents with all fields and attachments",
+  "main": "out/index.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "lint": "eslint src --ext .ts,.tsx",
+    "deploy": "forge deploy",
+    "install:app": "forge install",
+    "tunnel": "forge tunnel"
+  },
+  "keywords": [
+    "jira",
+    "pdf",
+    "export",
+    "atlassian",
+    "forge"
+  ],
+  "author": "Kristian Enström",
+  "license": "MIT",
+  "devDependencies": {
+    "@forge/cli": "^10.0.0",
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0",
+    "eslint": "^8.55.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0"
+  },
+  "dependencies": {
+    "@forge/api": "^4.0.0",
+    "@forge/resolver": "^1.6.0",
+    "jspdf": "^2.5.1"
+  }
+}
