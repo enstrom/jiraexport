@@ -10,7 +10,7 @@ resources:
 modules:
   jira:projectPage:
     - key: bulk-pdf-export-page
-      title: Bulk PDF Export
+      title: Bulk Export
       resource: bulkExportUI
       resolver:
         function: resolver
@@ -29,5 +29,6 @@ permissions:
     fetch:
       backend:
         - '*.atlassian.net'
+        - 'https://jiraexport.onrender.com'
       client:
         - 'https://jiraexport.onrender.com'

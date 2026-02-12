@@ -3,8 +3,12 @@
  * Main entry point
  */
 import Resolver from '@forge/resolver';
+import api, { fetch } from '@forge/api';
 import { exportIssueToPdf, exportMultipleIssuesToPdf, BulkExportResult } from './pdf-exporter';
 import { getIssue, searchIssues } from './jira-client';
+
+// External server URL
+const PDF_SERVER_URL = 'https://jiraexport.onrender.com';
 
 const resolver = new Resolver();
 
@@ -82,6 +86,101 @@ resolver.define('exportBulkToPdf', async (req: ResolverContext) => {
   } catch (error) {
     console.error('Error exporting bulk PDFs:', error);
     return { success: false, error: 'Failed to export PDFs' };
+  }
+});
+
+/**
+ * Check if external server is available
+ */
+resolver.define('checkServer', async () => {
+  console.log('checkServer called, checking:', PDF_SERVER_URL);
+  try {
+    const response = await fetch(`${PDF_SERVER_URL}/health`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    });
+    
+    console.log('Server response status:', response.status);
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('Server connected successfully:', data);
+      return { connected: true, data };
+    }
+    console.log('Server not responding');
+    return { connected: false, error: 'Server not responding' };
+  } catch (error) {
+    console.error('Server check failed:', error);
+    return { connected: false, error: 'Failed to connect to server' };
+  }
+});
+
+/**
+ * Get available export formats from server
+ */
+resolver.define('getFormats', async () => {
+  try {
+    const response = await fetch(`${PDF_SERVER_URL}/api/formats`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return { success: true, formats: data.formats };
+    }
+    return { success: false, formats: [] };
+  } catch (error) {
+    console.error('Failed to get formats:', error);
+    return { success: false, formats: [] };
+  }
+});
+
+/**
+ * Export issues via external server (with images)
+ */
+resolver.define('exportViaServer', async (req: ResolverContext) => {
+  const { issueKeys, format = 'pdf' } = req.payload || {};
+  
+  if (!issueKeys || !Array.isArray(issueKeys) || issueKeys.length === 0) {
+    return { success: false, error: 'No issue keys provided' };
+  }
+  
+  try {
+    console.log(`Exporting ${issueKeys.length} issues via server, format: ${format}`);
+    
+    const response = await fetch(`${PDF_SERVER_URL}/api/export`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        issue_keys: issueKeys,
+        format: format
+      })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Server error:', response.status, errorText);
+      return { success: false, error: `Server error: ${response.status}` };
+    }
+    
+    const data = await response.json();
+    console.log(`Export complete: ${data.exported} files`);
+    
+    return {
+      success: true,
+      files: data.files || data.pdfs || [],
+      errors: data.errors || [],
+      exported: data.exported,
+      total: data.total,
+      format: format
+    };
+  } catch (error) {
+    console.error('Export via server failed:', error);
+    return { success: false, error: 'Failed to export via server' };
   }
 });
 

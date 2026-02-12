@@ -29,6 +29,15 @@ except ImportError as e:
     WORD_AVAILABLE = False
     print(f"⚠️  Word-export ej tillgänglig: {e}")
 
+# Importera Markdown-generator
+try:
+    from markdown_generator import MarkdownGenerator
+    MARKDOWN_AVAILABLE = True
+    print("✅ Markdown-export tillgänglig")
+except ImportError as e:
+    MARKDOWN_AVAILABLE = False
+    print(f"⚠️  Markdown-export ej tillgänglig: {e}")
+
 app = Flask(__name__)
 CORS(app)  # Tillåt anrop från Forge-appen
 
@@ -100,17 +109,21 @@ def export_issues():
             return jsonify({'success': False, 'error': 'Missing Jira credentials. Configure JIRA_URL, JIRA_EMAIL, JIRA_API_TOKEN environment variables.'}), 400
         
         # Validera format
-        valid_formats = ['pdf', 'docx', 'png']
+        valid_formats = ['pdf', 'docx', 'png', 'md']
         if export_format not in valid_formats:
             return jsonify({'success': False, 'error': f'Invalid format. Use: {valid_formats}'}), 400
         
         if export_format == 'docx' and not WORD_AVAILABLE:
             return jsonify({'success': False, 'error': 'Word export not available on this server'}), 400
         
+        if export_format == 'md' and not MARKDOWN_AVAILABLE:
+            return jsonify({'success': False, 'error': 'Markdown export not available on this server'}), 400
+        
         # Initiera klienter
         jira = JiraClient(jira_url, email, api_token)
         pdf_gen = PDFGenerator(output_dir=TEMP_DIR)
         word_gen = WordGenerator(output_dir=TEMP_DIR) if WORD_AVAILABLE else None
+        md_gen = MarkdownGenerator(output_dir=TEMP_DIR) if MARKDOWN_AVAILABLE else None
         
         results = []
         errors = []
@@ -150,6 +163,11 @@ def export_issues():
                     file_path = word_gen.generate_docx(issue_data, attachment_paths)
                     mime_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
                     file_ext = 'docx'
+                    
+                elif export_format == 'md':
+                    file_path = md_gen.generate_markdown(issue_data, attachment_paths)
+                    mime_type = 'text/markdown'
+                    file_ext = 'md'
                     
                 elif export_format == 'png':
                     # För PNG: skapa en sammanfattningsbild
@@ -334,6 +352,7 @@ def get_formats():
         'formats': [
             {'id': 'pdf', 'name': 'PDF', 'extension': '.pdf', 'available': True, 'description': 'Portabelt dokumentformat med bilder'},
             {'id': 'docx', 'name': 'Word', 'extension': '.docx', 'available': WORD_AVAILABLE, 'description': 'Microsoft Word-dokument'},
+            {'id': 'md', 'name': 'Markdown', 'extension': '.md', 'available': MARKDOWN_AVAILABLE, 'description': 'Markdown för GPT/AI-sökning'},
             {'id': 'png', 'name': 'PNG', 'extension': '.png', 'available': True, 'description': 'Första bifogade bilden som PNG'}
         ]
     })
