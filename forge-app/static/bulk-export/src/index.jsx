@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { invoke } from '@forge/bridge';
 
-// Server URL - ändra till din deployade server
-const PDF_SERVER_URL = 'https://jira-pdf-export.onrender.com';  // Uppdatera efter deployment
+// Server URL - din deployade Render-server
+const PDF_SERVER_URL = 'https://jiraexport.onrender.com';
 
 const styles = {
   container: {
@@ -156,13 +156,31 @@ function App() {
   const [downloads, setDownloads] = useState([]);
   const [progress, setProgress] = useState(0);
   const [serverConnected, setServerConnected] = useState(null);
+  const [exportFormat, setExportFormat] = useState('pdf');
+  const [availableFormats, setAvailableFormats] = useState([
+    { id: 'pdf', name: 'PDF', available: true },
+    { id: 'docx', name: 'Word', available: true },
+    { id: 'png', name: 'PNG', available: true }
+  ]);
 
-  // Kontrollera serveranslutning
+  // Kontrollera serveranslutning och hämta format
   const checkServer = async () => {
     try {
       const response = await fetch(`${PDF_SERVER_URL}/health`);
       if (response.ok) {
         setServerConnected(true);
+        
+        // Hämta tillgängliga format
+        try {
+          const formatsRes = await fetch(`${PDF_SERVER_URL}/api/formats`);
+          if (formatsRes.ok) {
+            const data = await formatsRes.json();
+            setAvailableFormats(data.formats);
+          }
+        } catch (e) {
+          console.log('Could not fetch formats:', e);
+        }
+        
         return true;
       }
     } catch (e) {
@@ -229,14 +247,16 @@ function App() {
   // Exportera via extern server (med bilder)
   const exportViaServer = async () => {
     if (!serverConnected) {
-      setStatus({ type: 'error', message: 'PDF-servern ar inte tillganglig. Kontakta administratoren.' });
+      setStatus({ type: 'error', message: 'Exportservern ar inte tillganglig. Kontakta administratoren.' });
       return;
     }
 
     setIsExporting(true);
     setDownloads([]);
     setProgress(0);
-    setStatus({ type: 'loading', message: 'Skickar till PDF-server...' });
+    
+    const formatName = availableFormats.find(f => f.id === exportFormat)?.name || exportFormat.toUpperCase();
+    setStatus({ type: 'loading', message: `Exporterar till ${formatName}...` });
 
     try {
       const issueKeyList = issues.map(i => i.key);
@@ -244,17 +264,23 @@ function App() {
       const response = await fetch(`${PDF_SERVER_URL}/api/export`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ issue_keys: issueKeyList })
+        body: JSON.stringify({ 
+          issue_keys: issueKeyList,
+          format: exportFormat
+        })
       });
 
       const result = await response.json();
 
       if (result.success) {
-        const newDownloads = result.pdfs.map(pdf => ({
+        const newDownloads = result.files.map(file => ({
           success: true,
-          key: pdf.issue_key,
-          filename: pdf.filename,
-          pdfBase64: pdf.pdf_base64
+          key: file.issue_key,
+          filename: file.filename,
+          fileBase64: file.file_base64,
+          pdfBase64: file.file_base64,  // Bakåtkompatibilitet
+          format: file.format,
+          mimeType: getMimeType(file.format)
         }));
 
         // Lägg till misslyckade
@@ -269,7 +295,7 @@ function App() {
         setDownloads(newDownloads);
         setStatus({ 
           type: 'success', 
-          message: `Export klar! ${result.exported} av ${result.total} lyckades.` 
+          message: `Export klar! ${result.exported} av ${result.total} ${formatName}-filer skapades.` 
         });
       } else {
         setStatus({ type: 'error', message: result.error || 'Export misslyckades' });
@@ -280,6 +306,16 @@ function App() {
     }
 
     setIsExporting(false);
+  };
+  
+  // Hjälpfunktion för MIME-typer
+  const getMimeType = (format) => {
+    const mimeTypes = {
+      'pdf': 'application/pdf',
+      'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'png': 'image/png'
+    };
+    return mimeTypes[format] || 'application/octet-stream';
   };
 
   // Exportera via Forge backend (utan bilder)
@@ -330,14 +366,16 @@ function App() {
     const successfulDownloads = downloads.filter(d => d.success);
     
     if (successfulDownloads.length === 0) {
-      setStatus({ type: 'error', message: 'Inga PDFer att ladda ner' });
+      setStatus({ type: 'error', message: 'Inga filer att ladda ner' });
       return;
     }
 
     successfulDownloads.forEach((dl, index) => {
       setTimeout(() => {
         const link = document.createElement('a');
-        link.href = `data:application/pdf;base64,${dl.pdfBase64}`;
+        const mimeType = dl.mimeType || getMimeType(dl.format || 'pdf');
+        const base64Data = dl.fileBase64 || dl.pdfBase64;
+        link.href = `data:${mimeType};base64,${base64Data}`;
         link.download = dl.filename;
         document.body.appendChild(link);
         link.click();
@@ -420,6 +458,45 @@ function App() {
               </div>
             ))}
           </div>
+          
+          {/* Formatväljare */}
+          {serverConnected && (
+            <div style={{ marginTop: '16px', marginBottom: '8px' }}>
+              <strong>📁 Exportformat:</strong>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                {availableFormats.filter(f => f.available).map(format => (
+                  <label 
+                    key={format.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '8px 12px',
+                      background: exportFormat === format.id ? '#0052CC' : '#F4F5F7',
+                      color: exportFormat === format.id ? 'white' : '#172B4D',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontWeight: exportFormat === format.id ? 600 : 400
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="format"
+                      value={format.id}
+                      checked={exportFormat === format.id}
+                      onChange={() => setExportFormat(format.id)}
+                      style={{ display: 'none' }}
+                    />
+                    {format.id === 'pdf' && '📄'}
+                    {format.id === 'docx' && '📝'}
+                    {format.id === 'png' && '🖼️'}
+                    {format.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+          
           <div style={styles.buttonRow}>
             {serverConnected && (
               <button
@@ -427,7 +504,7 @@ function App() {
                 onClick={exportViaServer}
                 disabled={isExporting}
               >
-                {isExporting ? 'Exporterar...' : `🖼️ Exportera med bilder (${issues.length})`}
+                {isExporting ? 'Exporterar...' : `🚀 Exportera till ${exportFormat.toUpperCase()} (${issues.length})`}
               </button>
             )}
             <button
@@ -435,7 +512,7 @@ function App() {
               onClick={exportViaForge}
               disabled={isExporting}
             >
-              {isExporting ? 'Exporterar...' : `📄 Snabb export (${issues.length})`}
+              {isExporting ? 'Exporterar...' : `📄 Snabb PDF (utan bilder)`}
             </button>
             <button
               style={styles.button}
@@ -457,30 +534,34 @@ function App() {
                 style={styles.buttonGreen}
                 onClick={downloadAll}
               >
-                ⬇️ Ladda ner alla ({successCount}) PDFer
+                ⬇️ Ladda ner alla ({successCount}) filer
               </button>
             </div>
           )}
           
           <div style={{ marginTop: '12px' }}>
-            {downloads.map((dl, idx) => (
-              <div key={idx} style={styles.downloadItem}>
-                {dl.success ? (
-                  <>
-                    ✅{' '}
-                    <a
-                      href={`data:application/pdf;base64,${dl.pdfBase64}`}
-                      download={dl.filename}
-                      style={styles.link}
-                    >
-                      {dl.filename}
-                    </a>
-                  </>
-                ) : (
-                  <>❌ {dl.key}: {dl.error}</>
-                )}
-              </div>
-            ))}
+            {downloads.map((dl, idx) => {
+              const mimeType = dl.mimeType || getMimeType(dl.format || 'pdf');
+              const base64Data = dl.fileBase64 || dl.pdfBase64;
+              return (
+                <div key={idx} style={styles.downloadItem}>
+                  {dl.success ? (
+                    <>
+                      ✅{' '}
+                      <a
+                        href={`data:${mimeType};base64,${base64Data}`}
+                        download={dl.filename}
+                        style={styles.link}
+                      >
+                        {dl.filename}
+                      </a>
+                    </>
+                  ) : (
+                    <>❌ {dl.key}: {dl.error}</>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

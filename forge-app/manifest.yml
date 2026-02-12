@@ -29,3 +29,5 @@ permissions:
     fetch:
       backend:
         - '*.atlassian.net'
+      client:
+        - 'https://jiraexport.onrender.com'

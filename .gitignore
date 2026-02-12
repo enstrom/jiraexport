@@ -30,3 +30,4 @@ forge-app/static/*/.parcel-cache/
 # Temp
 *.log
 *.tmp
+*.csv
