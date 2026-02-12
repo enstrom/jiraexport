@@ -13,6 +13,7 @@ COPY jira_client.py .
 COPY pdf_generator.py .
 COPY server/app.py .
 COPY server/word_generator.py .
+COPY server/markdown_generator.py .
 
 # Expose port
 EXPOSE 5000
