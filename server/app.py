@@ -24,9 +24,10 @@ from config import Config
 try:
     from word_generator import WordGenerator
     WORD_AVAILABLE = True
-except ImportError:
+    print("✅ Word-export tillgänglig")
+except ImportError as e:
     WORD_AVAILABLE = False
-    print("⚠️  Word-export ej tillgänglig (python-docx saknas)")
+    print(f"⚠️  Word-export ej tillgänglig: {e}")
 
 app = Flask(__name__)
 CORS(app)  # Tillåt anrop från Forge-appen
@@ -123,10 +124,21 @@ def export_issues():
                 
                 # Ladda ner bilagor
                 attachment_paths = []
-                if issue_data.get('attachments'):
+                attachments = issue_data.get('attachments', [])
+                print(f"   📎 Issue har {len(attachments)} bilagor")
+                
+                if attachments:
                     att_dir = os.path.join(TEMP_DIR, 'attachments', issue_key)
+                    os.makedirs(att_dir, exist_ok=True)
+                    
+                    for att in attachments:
+                        print(f"      - {att['filename']} ({att['mime_type']}, {att['size']} bytes)")
+                    
                     attachment_paths = jira.download_all_attachments(issue_data, att_dir)
-                    print(f"   📎 Laddade ner {len(attachment_paths)} bilagor")
+                    print(f"   ✅ Laddade ner {len(attachment_paths)} av {len(attachments)} bilagor")
+                    
+                    for path in attachment_paths:
+                        print(f"      - Sparad: {path}")
                 
                 # Generera fil baserat på format
                 if export_format == 'pdf':
