@@ -68,12 +68,26 @@ function setupEventListeners() {
     // Tabs
     tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
+            // Update button states
             tabBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             
             const tabId = btn.dataset.tab;
-            keysTab.classList.toggle('active', tabId === 'keys');
-            jqlTab.classList.toggle('active', tabId === 'jql');
+            
+            // Show/hide tab content explicitly
+            if (tabId === 'keys') {
+                keysTab.classList.add('active');
+                keysTab.classList.remove('hidden');
+                jqlTab.classList.remove('active');
+                jqlTab.classList.add('hidden');
+            } else if (tabId === 'jql') {
+                jqlTab.classList.add('active');
+                jqlTab.classList.remove('hidden');
+                keysTab.classList.remove('active');
+                keysTab.classList.add('hidden');
+            }
+            
+            console.log('Tab switched to:', tabId);
         });
     });
     
