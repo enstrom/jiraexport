@@ -193,12 +193,12 @@ def search_issues():
                     pass
                     
         elif 'jql' in data:
-            # JQL-sökning
+            # JQL-sökning - använd nya API:et /rest/api/3/search/jql
             jql = data['jql']
             max_results = min(data.get('max_results', 50), 100)
             
             response = requests.post(
-                f"{jira_url}/rest/api/3/search",
+                f"{jira_url}/rest/api/3/search/jql",
                 auth=auth,
                 headers=headers,
                 json={
