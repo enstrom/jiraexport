@@ -51,6 +51,7 @@
                             placeholder="din.email@foretag.se"
                             required
                         >
+                        <span class="input-hint">Samma e-post som du loggar in med i Jira</span>
                     </div>
                     
                     <div class="input-group">
@@ -62,9 +63,8 @@
                             required
                         >
                         <span class="input-hint">
-                            <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank">
-                                Skapa API Token →
-                            </a>
+                            Har du inget token? 
+                            <a href="#" onclick="showTokenHelp(); return false;">Se instruktioner nedan ↓</a>
                         </span>
                     </div>
                     
@@ -78,6 +78,58 @@
                     
                     <div id="loginError" class="error-message hidden"></div>
                 </form>
+                
+                <!-- Token Help Section -->
+                <div id="tokenHelp" class="token-help">
+                    <div class="help-header" onclick="toggleTokenHelp()">
+                        <span>🔑 Hur skapar jag ett API Token?</span>
+                        <span class="help-toggle">▼</span>
+                    </div>
+                    <div class="help-content" id="helpContent">
+                        <div class="help-steps">
+                            <div class="help-step">
+                                <span class="step-number">1</span>
+                                <div class="step-content">
+                                    <strong>Gå till Atlassian-kontoinställningar</strong>
+                                    <p>Klicka på länken nedan för att öppna token-sidan:</p>
+                                    <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" class="btn-link">
+                                        🔗 Öppna API Token-sidan
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="help-step">
+                                <span class="step-number">2</span>
+                                <div class="step-content">
+                                    <strong>Skapa nytt token</strong>
+                                    <p>Klicka på <code>Create API token</code></p>
+                                </div>
+                            </div>
+                            <div class="help-step">
+                                <span class="step-number">3</span>
+                                <div class="step-content">
+                                    <strong>Namnge ditt token</strong>
+                                    <p>T.ex. "Jira Export Tool"</p>
+                                </div>
+                            </div>
+                            <div class="help-step">
+                                <span class="step-number">4</span>
+                                <div class="step-content">
+                                    <strong>Kopiera token</strong>
+                                    <p>⚠️ Spara det! Token visas bara en gång.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="help-note">
+                            <strong>💡 Bra att veta:</strong>
+                            <ul>
+                                <li>Token ger samma behörigheter som ditt Jira-konto</li>
+                                <li>Du kan bara exportera issues du har tillgång till</li>
+                                <li>Token kan återkallas när som helst</li>
+                                <li>Ingen admin-godkännande krävs</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
 

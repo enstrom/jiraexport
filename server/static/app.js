@@ -406,3 +406,15 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+// Token help functions
+function showTokenHelp() {
+    const tokenHelp = document.getElementById('tokenHelp');
+    tokenHelp.classList.add('expanded');
+    tokenHelp.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function toggleTokenHelp() {
+    const tokenHelp = document.getElementById('tokenHelp');
+    tokenHelp.classList.toggle('expanded');
+}
