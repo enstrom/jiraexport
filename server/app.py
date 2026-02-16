@@ -1,15 +1,15 @@
 """
-Jira PDF Export Server
-======================
-REST API för att generera PDF, Word och PNG från Jira-issues.
-Anropas av Forge-appen.
+Jira Export Server
+==================
+REST API och Webbgränssnitt för att exportera Jira-issues
+till PDF, Word, Markdown och PNG.
 """
 import os
 import sys
 import base64
 import tempfile
 import io
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, render_template
 from flask_cors import CORS
 from PIL import Image as PILImage
 
@@ -38,11 +38,23 @@ except ImportError as e:
     MARKDOWN_AVAILABLE = False
     print(f"⚠️  Markdown-export ej tillgänglig: {e}")
 
-app = Flask(__name__)
-CORS(app)  # Tillåt anrop från Forge-appen
+app = Flask(__name__, 
+            template_folder='templates',
+            static_folder='static')
+CORS(app)  # Tillåt anrop från Forge-appen och webbgränssnittet
 
 # Temporär mapp för filer
 TEMP_DIR = tempfile.mkdtemp(prefix='jira_export_')
+
+
+# ===========================================
+# Webbgränssnitt Routes
+# ===========================================
+
+@app.route('/', methods=['GET'])
+def index():
+    """Servera huvudsidan"""
+    return render_template('index.html')
 
 
 @app.route('/health', methods=['GET'])
@@ -51,13 +63,177 @@ def health_check():
     return jsonify({
         'status': 'ok',
         'service': 'Jira Export Server',
-        'version': '2.0.0',
+        'version': '2.1.0',
         'formats': {
             'pdf': True,
             'docx': WORD_AVAILABLE,
+            'md': MARKDOWN_AVAILABLE,
             'png': True
         }
     })
+
+
+@app.route('/api/test-credentials', methods=['POST'])
+def test_credentials():
+    """
+    Testa Jira-credentials
+    
+    Request body:
+    {
+        "jira_url": "https://company.atlassian.net",
+        "email": "user@company.com",
+        "api_token": "xxx"
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        jira_url = data.get('jira_url', '').rstrip('/')
+        email = data.get('email', '')
+        api_token = data.get('api_token', '')
+        
+        if not all([jira_url, email, api_token]):
+            return jsonify({'success': False, 'error': 'Fyll i alla fält'})
+        
+        # Skapa klient och testa anslutning
+        jira = JiraClient(jira_url, email, api_token)
+        
+        # Testa genom att hämta serverinfo
+        import requests
+        from requests.auth import HTTPBasicAuth
+        
+        response = requests.get(
+            f"{jira_url}/rest/api/3/myself",
+            auth=HTTPBasicAuth(email, api_token),
+            headers={'Accept': 'application/json'},
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            user_data = response.json()
+            return jsonify({
+                'success': True,
+                'site_name': jira_url.replace('https://', '').replace('.atlassian.net', ''),
+                'user': user_data.get('displayName', email)
+            })
+        elif response.status_code == 401:
+            return jsonify({'success': False, 'error': 'Felaktig e-post eller API-token'})
+        elif response.status_code == 403:
+            return jsonify({'success': False, 'error': 'Åtkomst nekad. Kontrollera behörigheter.'})
+        else:
+            return jsonify({'success': False, 'error': f'Kunde inte ansluta (HTTP {response.status_code})'})
+            
+    except requests.exceptions.Timeout:
+        return jsonify({'success': False, 'error': 'Timeout - kontrollera URL:en'})
+    except requests.exceptions.ConnectionError:
+        return jsonify({'success': False, 'error': 'Kunde inte ansluta - kontrollera URL:en'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/search', methods=['POST'])
+def search_issues():
+    """
+    Sök efter issues
+    
+    Request body (alternativ 1 - issue keys):
+    {
+        "jira_url": "...",
+        "email": "...",
+        "api_token": "...",
+        "issue_keys": ["PROJ-1", "PROJ-2"]
+    }
+    
+    Request body (alternativ 2 - JQL):
+    {
+        "jira_url": "...",
+        "email": "...",
+        "api_token": "...",
+        "jql": "project = PROJ ORDER BY created DESC",
+        "max_results": 50
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        jira_url = data.get('jira_url', '').rstrip('/')
+        email = data.get('email', '')
+        api_token = data.get('api_token', '')
+        
+        if not all([jira_url, email, api_token]):
+            return jsonify({'success': False, 'error': 'Saknar Jira-credentials'})
+        
+        import requests
+        from requests.auth import HTTPBasicAuth
+        
+        auth = HTTPBasicAuth(email, api_token)
+        headers = {'Accept': 'application/json', 'Content-Type': 'application/json'}
+        
+        issues = []
+        
+        if 'issue_keys' in data:
+            # Hämta specifika issues
+            for key in data['issue_keys']:
+                try:
+                    response = requests.get(
+                        f"{jira_url}/rest/api/3/issue/{key}",
+                        auth=auth,
+                        headers=headers,
+                        timeout=10
+                    )
+                    if response.status_code == 200:
+                        issue_data = response.json()
+                        issues.append({
+                            'key': issue_data['key'],
+                            'summary': issue_data['fields']['summary'],
+                            'type': issue_data['fields']['issuetype']['name'],
+                            'status': issue_data['fields']['status']['name']
+                        })
+                except:
+                    pass
+                    
+        elif 'jql' in data:
+            # JQL-sökning
+            jql = data['jql']
+            max_results = min(data.get('max_results', 50), 100)
+            
+            response = requests.post(
+                f"{jira_url}/rest/api/3/search",
+                auth=auth,
+                headers=headers,
+                json={
+                    'jql': jql,
+                    'maxResults': max_results,
+                    'fields': ['summary', 'issuetype', 'status']
+                },
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                search_data = response.json()
+                for issue_data in search_data.get('issues', []):
+                    issues.append({
+                        'key': issue_data['key'],
+                        'summary': issue_data['fields']['summary'],
+                        'type': issue_data['fields']['issuetype']['name'],
+                        'status': issue_data['fields']['status']['name']
+                    })
+            else:
+                return jsonify({
+                    'success': False, 
+                    'error': f'JQL-sökning misslyckades: {response.text}'
+                })
+        else:
+            return jsonify({'success': False, 'error': 'Ange issue_keys eller jql'})
+        
+        return jsonify({
+            'success': True,
+            'issues': issues,
+            'count': len(issues)
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 
 @app.route('/api/export', methods=['POST'])
@@ -363,12 +539,14 @@ if __name__ == '__main__':
     debug = os.getenv('DEBUG', 'false').lower() == 'true'
     
     print(f"""
-╔═══════════════════════════════════════════════════╗
-║       Jira Export Server v2.0                     ║
-║       http://localhost:{port}                        ║
-║                                                   ║
-║  Formats: PDF ✓  Word {'✓' if WORD_AVAILABLE else '✗'}  PNG ✓               ║
-╚═══════════════════════════════════════════════════╝
+╔═══════════════════════════════════════════════════════════╗
+║       Jira Export Server v2.1                             ║
+║       http://localhost:{port}                                ║
+║                                                           ║
+║  Formats: PDF ✓  Word {'✓' if WORD_AVAILABLE else '✗'}  Markdown {'✓' if MARKDOWN_AVAILABLE else '✗'}  PNG ✓       ║
+║                                                           ║
+║  🌐 Webbgränssnitt: http://localhost:{port}                  ║
+╚═══════════════════════════════════════════════════════════╝
     """)
     
     app.run(host='0.0.0.0', port=port, debug=debug)

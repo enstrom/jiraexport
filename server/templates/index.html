@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jira Export Tool</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">📦</span>
+                <span class="logo-text">Jira Export</span>
+            </div>
+            <div class="header-right">
+                <span class="version">v2.1</span>
+                <button id="logoutBtn" class="btn-ghost hidden">Logga ut</button>
+            </div>
+        </header>
+
+        <!-- Login Screen -->
+        <section id="loginScreen" class="screen login-screen">
+            <div class="login-card">
+                <div class="login-header">
+                    <h1>Välkommen</h1>
+                    <p>Anslut till din Jira-instans för att exportera issues</p>
+                </div>
+                
+                <form id="loginForm" class="login-form">
+                    <div class="input-group">
+                        <label for="jiraUrl">Jira URL</label>
+                        <input 
+                            type="url" 
+                            id="jiraUrl" 
+                            placeholder="https://dittforetag.atlassian.net"
+                            required
+                        >
+                        <span class="input-hint">Din Atlassian Cloud URL</span>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="email">E-post</label>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            placeholder="din.email@foretag.se"
+                            required
+                        >
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="apiToken">API Token</label>
+                        <input 
+                            type="password" 
+                            id="apiToken" 
+                            placeholder="••••••••••••••••"
+                            required
+                        >
+                        <span class="input-hint">
+                            <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank">
+                                Skapa API Token →
+                            </a>
+                        </span>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary btn-full">
+                        <span class="btn-text">Anslut till Jira</span>
+                        <span class="btn-loading hidden">
+                            <span class="spinner"></span>
+                            Ansluter...
+                        </span>
+                    </button>
+                    
+                    <div id="loginError" class="error-message hidden"></div>
+                </form>
+            </div>
+        </section>
+
+        <!-- Main App Screen -->
+        <section id="mainScreen" class="screen main-screen hidden">
+            <div class="main-container">
+                <!-- Search Section -->
+                <div class="card search-card">
+                    <div class="card-header">
+                        <h2>🔍 Sök Issues</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="search-tabs">
+                            <button class="tab-btn active" data-tab="keys">Issue Keys</button>
+                            <button class="tab-btn" data-tab="jql">JQL Query</button>
+                        </div>
+                        
+                        <div id="keysTab" class="tab-content active">
+                            <div class="input-group">
+                                <label for="issueKeys">Issue Keys (kommaseparerade)</label>
+                                <input 
+                                    type="text" 
+                                    id="issueKeys" 
+                                    placeholder="PROJ-1, PROJ-2, PROJ-3"
+                                    class="mono"
+                                >
+                            </div>
+                        </div>
+                        
+                        <div id="jqlTab" class="tab-content hidden">
+                            <div class="input-group">
+                                <label for="jqlQuery">JQL Query</label>
+                                <textarea 
+                                    id="jqlQuery" 
+                                    placeholder="project = PROJ AND status = Done ORDER BY created DESC"
+                                    rows="3"
+                                    class="mono"
+                                ></textarea>
+                            </div>
+                            <div class="input-group">
+                                <label for="maxResults">Max resultat</label>
+                                <input type="number" id="maxResults" value="50" min="1" max="100">
+                            </div>
+                        </div>
+                        
+                        <button id="searchBtn" class="btn-primary">
+                            <span class="btn-text">Sök Issues</span>
+                            <span class="btn-loading hidden">
+                                <span class="spinner"></span>
+                                Söker...
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Results Section -->
+                <div id="resultsCard" class="card results-card hidden">
+                    <div class="card-header">
+                        <h2>📋 Resultat</h2>
+                        <span id="resultCount" class="badge">0 issues</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="issues-list" id="issuesList"></div>
+                        
+                        <!-- Format Selector -->
+                        <div class="format-section">
+                            <h3>📁 Välj exportformat</h3>
+                            <div class="format-grid">
+                                <label class="format-option selected" data-format="pdf">
+                                    <input type="radio" name="format" value="pdf" checked>
+                                    <span class="format-icon">📄</span>
+                                    <span class="format-name">PDF</span>
+                                    <span class="format-desc">Med bilder</span>
+                                </label>
+                                <label class="format-option" data-format="docx">
+                                    <input type="radio" name="format" value="docx">
+                                    <span class="format-icon">📝</span>
+                                    <span class="format-name">Word</span>
+                                    <span class="format-desc">Redigerbart</span>
+                                </label>
+                                <label class="format-option" data-format="md">
+                                    <input type="radio" name="format" value="md">
+                                    <span class="format-icon">📋</span>
+                                    <span class="format-name">Markdown</span>
+                                    <span class="format-desc">För AI/GPT</span>
+                                </label>
+                                <label class="format-option" data-format="png">
+                                    <input type="radio" name="format" value="png">
+                                    <span class="format-icon">🖼️</span>
+                                    <span class="format-name">PNG</span>
+                                    <span class="format-desc">Första bilden</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <button id="exportBtn" class="btn-success btn-full">
+                            <span class="btn-text">🚀 Exportera</span>
+                            <span class="btn-loading hidden">
+                                <span class="spinner"></span>
+                                Exporterar...
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Downloads Section -->
+                <div id="downloadsCard" class="card downloads-card hidden">
+                    <div class="card-header">
+                        <h2>📥 Nedladdningar</h2>
+                        <button id="downloadAllBtn" class="btn-small btn-success">
+                            ⬇️ Ladda ner alla
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="downloadsList" class="downloads-list"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Status Toast -->
+        <div id="toast" class="toast hidden">
+            <span class="toast-icon"></span>
+            <span class="toast-message"></span>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

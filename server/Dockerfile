@@ -1,4 +1,4 @@
-# Jira PDF Export Server
+# Jira Export Server v2.1
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -14,6 +14,10 @@ COPY pdf_generator.py .
 COPY server/app.py .
 COPY server/word_generator.py .
 COPY server/markdown_generator.py .
+
+# Copy web interface
+COPY server/templates templates/
+COPY server/static static/
 
 # Expose port
 EXPOSE 5000
