@@ -7,38 +7,47 @@ let credentials = null;
 let issues = [];
 let selectedFormat = 'pdf';
 
-// DOM Elements
-const loginScreen = document.getElementById('loginScreen');
-const mainScreen = document.getElementById('mainScreen');
-const loginForm = document.getElementById('loginForm');
-const loginError = document.getElementById('loginError');
-const logoutBtn = document.getElementById('logoutBtn');
-
-const searchBtn = document.getElementById('searchBtn');
-const issueKeysInput = document.getElementById('issueKeys');
-const jqlQueryInput = document.getElementById('jqlQuery');
-const maxResultsInput = document.getElementById('maxResults');
-
-const resultsCard = document.getElementById('resultsCard');
-const resultCount = document.getElementById('resultCount');
-const issuesList = document.getElementById('issuesList');
-
-const exportBtn = document.getElementById('exportBtn');
-const formatOptions = document.querySelectorAll('.format-option');
-
-const downloadsCard = document.getElementById('downloadsCard');
-const downloadsList = document.getElementById('downloadsList');
-const downloadAllBtn = document.getElementById('downloadAllBtn');
-
-const toast = document.getElementById('toast');
-
-// Tab handling
-const tabBtns = document.querySelectorAll('.tab-btn');
-const keysTab = document.getElementById('keysTab');
-const jqlTab = document.getElementById('jqlTab');
+// DOM Elements (initialized after DOM loads)
+let loginScreen, mainScreen, loginForm, loginError, logoutBtn;
+let searchBtn, issueKeysInput, jqlQueryInput, maxResultsInput;
+let resultsCard, resultCount, issuesList;
+let exportBtn, formatOptions;
+let downloadsCard, downloadsList, downloadAllBtn;
+let toast;
+let tabBtns, keysTab, jqlTab;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+    // Get DOM elements
+    loginScreen = document.getElementById('loginScreen');
+    mainScreen = document.getElementById('mainScreen');
+    loginForm = document.getElementById('loginForm');
+    loginError = document.getElementById('loginError');
+    logoutBtn = document.getElementById('logoutBtn');
+
+    searchBtn = document.getElementById('searchBtn');
+    issueKeysInput = document.getElementById('issueKeys');
+    jqlQueryInput = document.getElementById('jqlQuery');
+    maxResultsInput = document.getElementById('maxResults');
+
+    resultsCard = document.getElementById('resultsCard');
+    resultCount = document.getElementById('resultCount');
+    issuesList = document.getElementById('issuesList');
+
+    exportBtn = document.getElementById('exportBtn');
+    formatOptions = document.querySelectorAll('.format-option');
+
+    downloadsCard = document.getElementById('downloadsCard');
+    downloadsList = document.getElementById('downloadsList');
+    downloadAllBtn = document.getElementById('downloadAllBtn');
+
+    toast = document.getElementById('toast');
+
+    // Tab handling
+    tabBtns = document.querySelectorAll('.tab-btn');
+    keysTab = document.getElementById('keysTab');
+    jqlTab = document.getElementById('jqlTab');
+    
     // Check for saved credentials
     const saved = localStorage.getItem('jiraCredentials');
     if (saved) {
