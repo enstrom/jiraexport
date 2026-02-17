@@ -369,7 +369,8 @@ function getMimeType(format) {
     const types = {
         'pdf': 'application/pdf',
         'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'md': 'text/markdown',
+        'md': 'application/zip',  // Markdown returneras som ZIP med bilder
+        'zip': 'application/zip',
         'png': 'image/png'
     };
     return types[format] || 'application/octet-stream';

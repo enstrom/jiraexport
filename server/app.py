@@ -9,6 +9,8 @@ import sys
 import base64
 import tempfile
 import io
+import zipfile
+import shutil
 from flask import Flask, request, jsonify, send_file, render_template
 from flask_cors import CORS
 from PIL import Image as PILImage
@@ -341,9 +343,10 @@ def export_issues():
                     file_ext = 'docx'
                     
                 elif export_format == 'md':
-                    file_path = md_gen.generate_markdown(issue_data, attachment_paths)
-                    mime_type = 'text/markdown'
-                    file_ext = 'md'
+                    # Skapa ZIP med Markdown + bilder
+                    file_path, file_ext, mime_type = create_markdown_bundle(
+                        issue_data, attachment_paths, md_gen, TEMP_DIR
+                    )
                     
                 elif export_format == 'png':
                     # För PNG: skapa en sammanfattningsbild
@@ -469,6 +472,63 @@ def export_single_issue(issue_key):
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def create_markdown_bundle(issue_data: dict, attachment_paths: list, md_gen, output_dir: str) -> tuple:
+    """
+    Skapa en ZIP-fil med Markdown + bilder
+    
+    Returns:
+        tuple: (filepath, file_ext, mime_type)
+    """
+    issue_key = issue_data['key']
+    
+    # Skapa temporär mapp för bundle
+    bundle_dir = os.path.join(output_dir, f'{issue_key}_bundle')
+    images_dir = os.path.join(bundle_dir, 'images')
+    os.makedirs(images_dir, exist_ok=True)
+    
+    # Bildformat
+    image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'}
+    
+    # Kopiera bilder till images-mappen
+    copied_images = []
+    for path in (attachment_paths or []):
+        if os.path.exists(path):
+            filename = os.path.basename(path)
+            ext = os.path.splitext(filename)[1].lower()
+            
+            if ext in image_extensions:
+                # Lägg till issue_key prefix för unika filnamn
+                new_filename = f'{issue_key}-{filename}'
+                dest_path = os.path.join(images_dir, new_filename)
+                shutil.copy2(path, dest_path)
+                copied_images.append(new_filename)
+    
+    # Generera Markdown (peka på images/-mappen)
+    md_content = md_gen._build_markdown(issue_data, attachment_paths)
+    md_path = os.path.join(bundle_dir, f'{issue_key}.md')
+    with open(md_path, 'w', encoding='utf-8') as f:
+        f.write(md_content)
+    
+    # Skapa ZIP
+    zip_path = os.path.join(output_dir, f'{issue_key}_markdown.zip')
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+        # Lägg till Markdown-filen
+        zf.write(md_path, f'{issue_key}.md')
+        
+        # Lägg till alla bilder
+        for img_name in copied_images:
+            img_path = os.path.join(images_dir, img_name)
+            zf.write(img_path, f'images/{img_name}')
+    
+    # Städa temporär bundle-mapp
+    try:
+        shutil.rmtree(bundle_dir)
+    except:
+        pass
+    
+    return zip_path, 'zip', 'application/zip'
 
 
 def create_png_summary(issue_data: dict, attachment_paths: list, output_dir: str) -> str:
