@@ -5,7 +5,6 @@ REST API och Webbgränssnitt för att exportera Jira-issues
 till PDF, Word, Markdown och PNG.
 """
 import os
-import sys
 import base64
 import tempfile
 import io
@@ -15,9 +14,7 @@ from flask import Flask, request, jsonify, send_file, render_template
 from flask_cors import CORS
 from PIL import Image as PILImage
 
-# Lägg till parent directory för att importera befintlig kod
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+# Importera från samma mapp (kopierade filer för deployment)
 from jira_client import JiraClient
 from pdf_generator import PDFGenerator
 from config import Config

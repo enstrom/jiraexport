@@ -1,0 +1,48 @@
+applications:
+  jira-export:
+    # Python application
+    type: 'python:3.11'
+    
+    # The web configuration
+    web:
+      commands:
+        start: 'gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 app:app'
+      
+      locations:
+        '/':
+          passthru: true
+        
+        '/static':
+          root: 'static'
+          expires: 1h
+          allow: true
+
+    # The build hook
+    hooks:
+      build: |
+        set -e
+        pip install -r requirements.txt
+
+    # The source directory
+    source:
+      root: 'server'
+
+    # Environment variables
+    variables:
+      env:
+        PYTHONUNBUFFERED: '1'
+
+    # Mounts for temporary files
+    mounts:
+      '/tmp':
+        source: 'local'
+        source_path: 'tmp'
+
+routes:
+  'https://{default}/':
+    type: upstream
+    upstream: 'jira-export:http'
+  
+  'https://www.{default}/':
+    type: redirect
+    to: 'https://{default}/'
