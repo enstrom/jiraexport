@@ -347,6 +347,24 @@ def export_issues():
                     file_path, file_ext, mime_type = create_markdown_bundle(
                         issue_data, attachment_paths, md_gen, TEMP_DIR
                     )
+                    # Returnera direkt med korrekt filnamn för ZIP
+                    with open(file_path, 'rb') as f:
+                        file_base64 = base64.b64encode(f.read()).decode('utf-8')
+                    
+                    results.append({
+                        'issue_key': issue_key,
+                        'filename': f'{issue_key}_markdown.zip',  # ZIP med bilder
+                        'file_base64': file_base64,
+                        'pdf_base64': file_base64,
+                        'format': 'zip',  # Viktigt: format är zip, inte md
+                        'size': len(file_base64)
+                    })
+                    print(f"   ✅ {issue_key} exporterad som Markdown + bilder (ZIP)")
+                    try:
+                        os.remove(file_path)
+                    except:
+                        pass
+                    continue  # Hoppa över standard-hantering nedan
                     
                 elif export_format == 'png':
                     # För PNG: skapa en sammanfattningsbild
